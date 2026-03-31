@@ -100,7 +100,7 @@
   .prep-item.checked .item-name { color: var(--success); text-decoration: line-through; opacity: 0.7; }
 
   /* 삭제 아이콘 숨김 처리 (터치 영역만 존재) */
-  .delete-hidden { width: 15px; height: 15px; border: none; background: transparent; cursor: pointer; }
+  .delete-hidden { width: 15px; height: 15px; border: none; background: transparent; cursor: pointer; margin-left: 10px; }
 
   /* 진행률 바 */
   .progress-container { margin-top: 20px; }
@@ -158,7 +158,7 @@
   </div>
 
   <div class="prep-list" id="prepList">
-    <div style="text-align:center; padding:20px; color:var(--text-muted); font-weight:700;">데이터를 불러오는 중입니다...</div>
+    <div style="text-align:center; padding:20px; color:var(--text-muted); font-weight:700;">불러오는 중...</div>
   </div>
 
   <div class="add-container">
@@ -194,27 +194,28 @@
   const db = getDatabase(app);
   const ROOT = ref(db, 'prepState'); 
 
+  // 기본 데이터
   const defaultData = {
-    1: [ // 월
+    1: [ 
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
       { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, 
       { text: '수학공부방 문제집', checked: false }, { text: '수학공부방 구구단 수첩', checked: false }
     ],
-    2: [ // 화
+    2: [ 
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, 
       { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '축구화', checked: false }
     ],
-    3: [ // 수
+    3: [ 
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, 
       { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, 
       { text: '바이올린 스즈키책', checked: false }, { text: '바이올린 계이름책', checked: false }, { text: '바이올린', checked: false }
     ],
-    4: [ // 목
+    4: [ 
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
       { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '독서록', checked: false }, 
       { text: '한우리 교재 & 폴더', checked: false }, { text: '한우리책', checked: false }
     ],
-    5: [ // 금
+    5: [ 
       { text: '물통', checked: false }, { text: '읽을 책', checked: false }, { text: '수영가방', checked: false }, 
       { text: '수영복', checked: false }, { text: '수영모자', checked: false }, { text: '수경', checked: false }, { text: '수건', checked: false }
     ]
@@ -228,36 +229,57 @@
   const actualToday = currentDay; 
   if (currentDay === 0 || currentDay === 6) currentDay = 1; 
 
-  let appData = null; 
+  const todayStr = new Date().toLocaleDateString('ko-KR');
+  
+  // 💡 1단계: 파이어베이스 에러를 대비해 무조건 기기(로컬)에서 데이터를 먼저 가져옵니다!
+  let appData = JSON.parse(localStorage.getItem('jiwooPrepData'));
+  
+  if (!appData) {
+    appData = { date: todayStr, days: defaultData };
+    localStorage.setItem('jiwooPrepData', JSON.stringify(appData));
+  } else if (appData.date !== todayStr) {
+    // 날짜가 다르면 체크 해제 후 로컬에 우선 저장
+    for (let day in appData.days) {
+      if (appData.days[day]) appData.days[day].forEach(item => item.checked = false); 
+    }
+    appData.date = todayStr;
+    localStorage.setItem('jiwooPrepData', JSON.stringify(appData));
+  }
 
-  // 파이어베이스 실시간 감지
+  // 💡 2단계: 로컬 데이터로 즉시 0.001초 만에 화면 렌더링! (절대 빈 화면 안 뜸)
+  renderTabs();
+  renderList();
+
+  // 💡 3단계: 뒤에서 조용히 파이어베이스 동기화 시도
   onValue(ROOT, (snapshot) => {
     const data = snapshot.val();
-    const todayStr = new Date().toLocaleDateString('ko-KR');
-
-    if (!data || !data.days) {
-      appData = { date: todayStr, days: defaultData };
-      saveData();
-    } else {
+    
+    // 파이어베이스에 데이터가 있으면 로컬을 덮어쓰고 다시 그림
+    if (data && data.days) {
       appData = data;
       if (appData.date !== todayStr) {
         for (let day in appData.days) {
-          if (appData.days[day]) {
-            appData.days[day].forEach(item => item.checked = false); 
-          }
+          if (appData.days[day]) appData.days[day].forEach(item => item.checked = false); 
         }
         appData.date = todayStr;
         saveData();
+      } else {
+        localStorage.setItem('jiwooPrepData', JSON.stringify(appData));
       }
+      renderList();
+    } else {
+      // 파이어베이스가 텅 비었으면 현재 로컬 데이터를 밀어넣음
+      saveData();
     }
-    
-    // 데이터가 들어오면 무조건 탭과 리스트를 그려줍니다!
-    renderTabs();
-    renderList();
+  }, (error) => {
+    console.error("파이어베이스 권한/연결 오류 발생 (화면은 정상 출력됩니다)", error);
+    // 권한 만료(30일) 에러가 나도 이미 화면은 그려져 있으므로 문제 없음!
   });
 
+  // 로컬과 파이어베이스 동시 저장 함수
   function saveData() {
-    set(ROOT, JSON.parse(JSON.stringify(appData)));
+    localStorage.setItem('jiwooPrepData', JSON.stringify(appData));
+    set(ROOT, JSON.parse(JSON.stringify(appData))).catch(e => console.error("DB 저장 실패:", e));
   }
 
   // ── 비 올 때만 확률을 보여주는 날씨 함수 ──
@@ -277,6 +299,7 @@
 
       document.getElementById('wIcon').textContent = icon;
       
+      // 비가 오거나 비 확률이 높을 때만 괄호 안에 확률 표시
       if (isRain || rainProb >= 40) {
         document.getElementById('wTemp').textContent = `${temp}℃ (비 ${rainProb}%)`;
       } else {
@@ -309,6 +332,7 @@
     if (!items.some(item => item.text.includes('우산'))) {
       items.unshift({ text: '☂️ 우산 챙기기 (비 예보)', checked: false });
       saveData();
+      if (currentDay === day) renderList();
     }
   }
 
@@ -360,6 +384,7 @@
     const items = appData.days[currentDay];
     items[index].checked = !items[index].checked;
     saveData(); 
+    renderList();
     
     const completedCount = items.filter(item => item.checked).length;
     if (items.length > 0 && completedCount === items.length) {
@@ -372,6 +397,7 @@
     if(confirm('이 항목을 삭제할까요?')) {
       appData.days[currentDay].splice(index, 1);
       saveData();
+      renderList();
     }
   }
 
@@ -384,6 +410,7 @@
     appData.days[currentDay].push({ text: text, checked: false });
     saveData();
     input.value = '';
+    renderList();
   }
 
   function handleKeyPress(e) { if (e.key === 'Enter') addItem(); }
@@ -409,7 +436,7 @@
   window.handleKeyPress = handleKeyPress;
   window.closeCelebration = closeCelebration;
 
-  // 초기 날씨 세팅
+  // 앱 시작 시 날씨 세팅
   initWeather();
 
 </script>
