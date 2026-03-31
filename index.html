@@ -99,7 +99,7 @@
   .item-name { font-size: 16px; font-weight: 700; color: var(--text); transition: color 0.2s; word-break: keep-all; }
   .prep-item.checked .item-name { color: var(--success); text-decoration: line-through; opacity: 0.7; }
 
-  /* 삭제 아이콘 숨김 처리 (터치 영역만 존재) */
+  /* 삭제 아이콘 숨김 처리 (안 보이지만 우측 끝 터치 시 삭제 가능) */
   .delete-hidden { width: 15px; height: 15px; border: none; background: transparent; cursor: pointer; margin-left: 10px; }
 
   /* 진행률 바 */
@@ -158,7 +158,7 @@
   </div>
 
   <div class="prep-list" id="prepList">
-    <div style="text-align:center; padding:20px; color:var(--text-muted); font-weight:700;">불러오는 중...</div>
+    <div style="text-align:center; padding:20px; color:var(--text-muted); font-weight:700;">데이터를 불러오는 중입니다...</div>
   </div>
 
   <div class="add-container">
@@ -168,7 +168,7 @@
 </div>
 
 <div class="celeb-overlay" id="celebOverlay" onclick="closeCelebration()">
-  <div class="celeb-heart">🥰</div>
+  <div class="celeb-heart">❤️</div>
   <div class="celeb-msg">
     학교갈 준비 완료!<br>
     <span class="highlight">오늘도 화이팅<br>❤️사랑해❤️</span>
@@ -194,51 +194,34 @@
   const db = getDatabase(app);
   const ROOT = ref(db, 'prepState'); 
 
-  // 기본 데이터
+  // 💡 "읽을 책" 띄어쓰기 완벽 반영
   const defaultData = {
-    1: [ 
-      { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
-      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, 
-      { text: '수학공부방 문제집', checked: false }, { text: '수학공부방 구구단 수첩', checked: false }
-    ],
-    2: [ 
-      { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, 
-      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '축구화', checked: false }
-    ],
-    3: [ 
-      { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, 
-      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, 
-      { text: '바이올린 스즈키책', checked: false }, { text: '바이올린 계이름책', checked: false }, { text: '바이올린', checked: false }
-    ],
-    4: [ 
-      { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
-      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '독서록', checked: false }, 
-      { text: '한우리 교재 & 폴더', checked: false }, { text: '한우리책', checked: false }
-    ],
-    5: [ 
-      { text: '물통', checked: false }, { text: '읽을 책', checked: false }, { text: '수영가방', checked: false }, 
-      { text: '수영복', checked: false }, { text: '수영모자', checked: false }, { text: '수경', checked: false }, { text: '수건', checked: false }
-    ]
+    1: [{ text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '수학공부방 문제집', checked: false }, { text: '수학공부방 구구단 수첩', checked: false }],
+    2: [{ text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '축구화', checked: false }],
+    3: [{ text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '바이올린 스즈키책', checked: false }, { text: '바이올린 계이름책', checked: false }, { text: '바이올린', checked: false }],
+    4: [{ text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '독서록', checked: false }, { text: '한우리 교재 & 폴더', checked: false }, { text: '한우리책', checked: false }],
+    5: [{ text: '물통', checked: false }, { text: '읽을 책', checked: false }, { text: '수영가방', checked: false }, { text: '수영복', checked: false }, { text: '수영모자', checked: false }, { text: '수경', checked: false }, { text: '수건', checked: false }]
   };
 
-  const daysInfo = [
-    { id: 1, name: '월' }, { id: 2, name: '화' }, { id: 3, name: '수' }, { id: 4, name: '목' }, { id: 5, name: '금' }
-  ];
-
+  const daysInfo = [{ id: 1, name: '월' }, { id: 2, name: '화' }, { id: 3, name: '수' }, { id: 4, name: '목' }, { id: 5, name: '금' }];
   let currentDay = new Date().getDay();
   const actualToday = currentDay; 
   if (currentDay === 0 || currentDay === 6) currentDay = 1; 
 
   const todayStr = new Date().toLocaleDateString('ko-KR');
   
-  // 💡 1단계: 파이어베이스 에러를 대비해 무조건 기기(로컬)에서 데이터를 먼저 가져옵니다!
+  // 💡 띄어쓰기 업데이트를 위해 과거 로컬 데이터 강제 초기화 (버전 관리)
+  if(localStorage.getItem('jiwooPrepVersion') !== 'v2') {
+     localStorage.removeItem('jiwooPrepData');
+     localStorage.setItem('jiwooPrepVersion', 'v2');
+  }
+
   let appData = JSON.parse(localStorage.getItem('jiwooPrepData'));
   
   if (!appData) {
     appData = { date: todayStr, days: defaultData };
     localStorage.setItem('jiwooPrepData', JSON.stringify(appData));
   } else if (appData.date !== todayStr) {
-    // 날짜가 다르면 체크 해제 후 로컬에 우선 저장
     for (let day in appData.days) {
       if (appData.days[day]) appData.days[day].forEach(item => item.checked = false); 
     }
@@ -246,15 +229,11 @@
     localStorage.setItem('jiwooPrepData', JSON.stringify(appData));
   }
 
-  // 💡 2단계: 로컬 데이터로 즉시 0.001초 만에 화면 렌더링! (절대 빈 화면 안 뜸)
   renderTabs();
   renderList();
 
-  // 💡 3단계: 뒤에서 조용히 파이어베이스 동기화 시도
   onValue(ROOT, (snapshot) => {
     const data = snapshot.val();
-    
-    // 파이어베이스에 데이터가 있으면 로컬을 덮어쓰고 다시 그림
     if (data && data.days) {
       appData = data;
       if (appData.date !== todayStr) {
@@ -268,21 +247,17 @@
       }
       renderList();
     } else {
-      // 파이어베이스가 텅 비었으면 현재 로컬 데이터를 밀어넣음
       saveData();
     }
   }, (error) => {
-    console.error("파이어베이스 권한/연결 오류 발생 (화면은 정상 출력됩니다)", error);
-    // 권한 만료(30일) 에러가 나도 이미 화면은 그려져 있으므로 문제 없음!
+    console.error("파이어베이스 권한/연결 오류 발생. Firebase 규칙 탭에서 true로 변경해주세요!", error);
   });
 
-  // 로컬과 파이어베이스 동시 저장 함수
   function saveData() {
     localStorage.setItem('jiwooPrepData', JSON.stringify(appData));
     set(ROOT, JSON.parse(JSON.stringify(appData))).catch(e => console.error("DB 저장 실패:", e));
   }
 
-  // ── 비 올 때만 확률을 보여주는 날씨 함수 ──
   async function fetchWeatherByCoords(lat, lon) {
     try {
       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=precipitation_probability_max,weathercode&timezone=Asia%2FSeoul`);
@@ -291,24 +266,17 @@
       const temp = Math.round(data.current_weather.temperature);
       const rainProb = data.daily.precipitation_probability_max[0];
       const isRain = (weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82) || weatherCode >= 95;
-      
       let icon = '☀️';
       if (weatherCode >= 1 && weatherCode <= 3) icon = '⛅';
       if (weatherCode >= 45 && weatherCode <= 48) icon = '🌫️';
       if (isRain) icon = '🌧️';
-
       document.getElementById('wIcon').textContent = icon;
-      
-      // 비가 오거나 비 확률이 높을 때만 괄호 안에 확률 표시
       if (isRain || rainProb >= 40) {
         document.getElementById('wTemp').textContent = `${temp}℃ (비 ${rainProb}%)`;
       } else {
         document.getElementById('wTemp').textContent = `${temp}℃`;
       }
-
-      if ((isRain || rainProb >= 40) && actualToday >= 1 && actualToday <= 5) {
-        addUmbrellaIfNeeded(actualToday);
-      }
+      if ((isRain || rainProb >= 40) && actualToday >= 1 && actualToday <= 5) addUmbrellaIfNeeded(actualToday);
     } catch (e) {
       document.getElementById('wIcon').textContent = '📍';
       document.getElementById('wTemp').textContent = '서울';
@@ -336,7 +304,6 @@
     }
   }
 
-  // ── 화면 렌더링 로직 ──
   function renderTabs() {
     const tabsContainer = document.getElementById('dayTabs');
     tabsContainer.innerHTML = '';
@@ -351,17 +318,14 @@
 
   function renderList() {
     if (!appData || !appData.days) return; 
-    
     const listContainer = document.getElementById('prepList');
     listContainer.innerHTML = '';
     const items = appData.days[currentDay] || [];
-    
     if (items.length === 0) {
       listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#a4b0be; font-weight:700;">오늘은 챙길 준비물이 없어요! 🎉</div>';
       updateProgress(0, 0);
       return;
     }
-
     let completedCount = 0;
     items.forEach((item, index) => {
       if (item.checked) completedCount++;
@@ -372,7 +336,7 @@
           <div class="checkbox"></div>
           <div class="item-name">${item.text}</div>
         </div>
-        <button class="delete-hidden" onclick="deleteItem(${index})"></button>
+        <button class="delete-hidden" onclick="deleteItem(${index})" title="항목 삭제"></button>
       `;
       listContainer.appendChild(div);
     });
@@ -381,13 +345,10 @@
 
   function toggleItem(index) {
     if (!appData) return;
-    const items = appData.days[currentDay];
-    items[index].checked = !items[index].checked;
+    appData.days[currentDay][index].checked = !appData.days[currentDay][index].checked;
     saveData(); 
     renderList();
-    
-    const completedCount = items.filter(item => item.checked).length;
-    if (items.length > 0 && completedCount === items.length) {
+    if (appData.days[currentDay].length > 0 && appData.days[currentDay].every(item => item.checked)) {
       setTimeout(() => { document.getElementById('celebOverlay').classList.add('show'); }, 300);
     }
   }
@@ -405,7 +366,6 @@
     const input = document.getElementById('newItemInput');
     const text = input.value.trim();
     if (text === '' || !appData) return;
-
     if (!appData.days[currentDay]) appData.days[currentDay] = [];
     appData.days[currentDay].push({ text: text, checked: false });
     saveData();
@@ -428,7 +388,6 @@
 
   function closeCelebration() { document.getElementById('celebOverlay').classList.remove('show'); }
 
-  // 💡 외부에서 접근 가능하도록 window 객체에 연결
   window.initWeather = initWeather;
   window.toggleItem = toggleItem;
   window.deleteItem = deleteItem;
@@ -436,9 +395,7 @@
   window.handleKeyPress = handleKeyPress;
   window.closeCelebration = closeCelebration;
 
-  // 앱 시작 시 날씨 세팅
   initWeather();
-
 </script>
 </body>
 </html>
