@@ -100,7 +100,7 @@
   .prep-item.checked .item-name { color: var(--success); text-decoration: line-through; opacity: 0.7; }
 
   /* 삭제 아이콘 숨김 처리 (터치 영역만 존재) */
-  .delete-hidden { width: 15px; height: 15px; border: none; background: transparent; cursor: pointer; }
+  .delete-hidden { width: 15px; height: 15px; border: none; background: transparent; cursor: pointer; margin-left: 10px; }
 
   /* 진행률 바 */
   .progress-container { margin-top: 20px; }
@@ -146,7 +146,7 @@
     <h1>지우의 등교 준비물</h1>
     <div class="weather-widget" id="weatherWidget" onclick="initWeather()" title="위치 새로고침">
       <span id="wIcon">📍</span>
-      <span id="wTemp">날씨 연결 중...</span>
+      <span id="wTemp">날씨 확인 중...</span>
     </div>
   </div>
 
@@ -158,7 +158,7 @@
   </div>
 
   <div class="prep-list" id="prepList">
-    <div style="text-align:center; padding:20px; color:var(--text-muted); font-weight:700;">로딩 중...</div>
+    <div style="text-align:center; padding:20px; color:var(--text-muted); font-weight:700;">데이터를 불러오는 중입니다...</div>
   </div>
 
   <div class="add-container">
@@ -168,10 +168,10 @@
 </div>
 
 <div class="celeb-overlay" id="celebOverlay" onclick="closeCelebration()">
-  <div class="celeb-heart">❤️</div>
+  <div class="celeb-heart">🥰</div>
   <div class="celeb-msg">
     학교갈 준비 완료!<br>
-    <span class="highlight">오늘도 화이팅<br>❤️사랑해❤️</span>
+    <span class="highlight">오늘도 화이팅!<br>❤️사랑해❤️</span>
   </div>
   <p style="margin-top: 30px; font-size: 13px; color: var(--text-muted); opacity: 0.7;">(화면을 누르면 닫혀요)</p>
 </div>
@@ -192,31 +192,31 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-  const ROOT = ref(db, 'prepState'); // 준비물 전용 서랍
+  const ROOT = ref(db, 'prepState'); 
 
-  // 💡 초기 기본값 (데이터가 텅 비었을 때 보호하는 용도)
+  // 초기 기본값
   const defaultData = {
     1: [ // 월
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
-      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을책', checked: false }, 
+      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, 
       { text: '수학공부방 문제집', checked: false }, { text: '수학공부방 구구단 수첩', checked: false }
     ],
     2: [ // 화
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, 
-      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을책', checked: false }, { text: '축구화', checked: false }
+      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '축구화', checked: false }
     ],
     3: [ // 수
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, 
-      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을책', checked: false }, 
+      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, 
       { text: '바이올린 스즈키책', checked: false }, { text: '바이올린 계이름책', checked: false }, { text: '바이올린', checked: false }
     ],
     4: [ // 목
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
-      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을책', checked: false }, { text: '독서록', checked: false }, 
+      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을 책', checked: false }, { text: '독서록', checked: false }, 
       { text: '한우리 교재 & 폴더', checked: false }, { text: '한우리책', checked: false }
     ],
     5: [ // 금
-      { text: '물통', checked: false }, { text: '읽을책', checked: false }, { text: '수영가방', checked: false }, 
+      { text: '물통', checked: false }, { text: '읽을 책', checked: false }, { text: '수영가방', checked: false }, 
       { text: '수영복', checked: false }, { text: '수영모자', checked: false }, { text: '수경', checked: false }, { text: '수건', checked: false }
     ]
   };
@@ -231,18 +231,16 @@
 
   let appData = null; 
 
-  // 💡 파이어베이스 실시간 감지 (안전 장치 강화!)
+  // 파이어베이스 실시간 감지
   onValue(ROOT, (snapshot) => {
     const data = snapshot.val();
     const todayStr = new Date().toLocaleDateString('ko-KR');
 
-    // 파이어베이스에 데이터가 아예 없거나(null) days 정보가 손상되었을 때 복구
     if (!data || !data.days) {
       appData = { date: todayStr, days: defaultData };
       saveData();
     } else {
       appData = data;
-      // 날짜가 바뀌었을 때만 체크박스 전체 해제
       if (appData.date !== todayStr) {
         for (let day in appData.days) {
           if (appData.days[day]) {
@@ -254,7 +252,6 @@
       }
     }
     
-    // 데이터가 준비되면 무조건 화면을 다시 그려줍니다.
     renderTabs();
     renderList();
   });
@@ -263,7 +260,7 @@
     set(ROOT, JSON.parse(JSON.stringify(appData)));
   }
 
-  // ── 날씨 및 GPS 처리 ──
+  // ── 비 올 때만 확률을 보여주는 똑똑한 날씨 함수 ──
   async function fetchWeatherByCoords(lat, lon) {
     try {
       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=precipitation_probability_max,weathercode&timezone=Asia%2FSeoul`);
@@ -279,7 +276,13 @@
       if (isRain) icon = '🌧️';
 
       document.getElementById('wIcon').textContent = icon;
-      document.getElementById('wTemp').textContent = `${temp}℃ (비 ${rainProb}%)`;
+      
+      // 비가 오거나 비 확률이 높을 때만 괄호 안에 확률 표시
+      if (isRain || rainProb >= 40) {
+        document.getElementById('wTemp').textContent = `${temp}℃ (비 ${rainProb}%)`;
+      } else {
+        document.getElementById('wTemp').textContent = `${temp}℃`;
+      }
 
       if ((isRain || rainProb >= 40) && actualToday >= 1 && actualToday <= 5) {
         addUmbrellaIfNeeded(actualToday);
@@ -324,7 +327,7 @@
   }
 
   function renderList() {
-    if (!appData || !appData.days) return; // 데이터가 아직 없으면 대기
+    if (!appData || !appData.days) return; 
     
     const listContainer = document.getElementById('prepList');
     listContainer.innerHTML = '';
@@ -399,7 +402,7 @@
 
   function closeCelebration() { document.getElementById('celebOverlay').classList.remove('show'); }
 
-  // 외부(HTML)에서 함수를 호출할 수 있도록 window 객체에 등록
+  // 💡 외부(HTML)에서 함수를 호출할 수 있도록 window 객체에 완벽하게 등록 (오류 해결!)
   window.initWeather = initWeather;
   window.toggleItem = toggleItem;
   window.deleteItem = deleteItem;
@@ -407,7 +410,7 @@
   window.handleKeyPress = handleKeyPress;
   window.closeCelebration = closeCelebration;
 
-  // 앱 시작 시 날씨 정보 불러오기
+  // 앱 시작 시 날씨 연동
   initWeather();
 
 </script>
