@@ -100,7 +100,7 @@
   .prep-item.checked .item-name { color: var(--success); text-decoration: line-through; opacity: 0.7; }
 
   /* 삭제 아이콘 숨김 처리 (터치 영역만 존재) */
-  .delete-hidden { width: 15px; height: 15px; border: none; background: transparent; cursor: pointer; margin-left: 10px; }
+  .delete-hidden { width: 15px; height: 15px; border: none; background: transparent; cursor: pointer; }
 
   /* 진행률 바 */
   .progress-container { margin-top: 20px; }
@@ -146,7 +146,7 @@
     <h1>지우의 등교 준비물</h1>
     <div class="weather-widget" id="weatherWidget" onclick="initWeather()" title="위치 새로고침">
       <span id="wIcon">📍</span>
-      <span id="wTemp">날씨 확인 중...</span>
+      <span id="wTemp">날씨 연결 중...</span>
     </div>
   </div>
 
@@ -171,7 +171,7 @@
   <div class="celeb-heart">🥰</div>
   <div class="celeb-msg">
     학교갈 준비 완료!<br>
-    <span class="highlight">오늘도 화이팅!<br>❤️사랑해❤️</span>
+    <span class="highlight">오늘도 화이팅<br>❤️사랑해❤️</span>
   </div>
   <p style="margin-top: 30px; font-size: 13px; color: var(--text-muted); opacity: 0.7;">(화면을 누르면 닫혀요)</p>
 </div>
@@ -194,7 +194,6 @@
   const db = getDatabase(app);
   const ROOT = ref(db, 'prepState'); 
 
-  // 초기 기본값
   const defaultData = {
     1: [ // 월
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
@@ -252,6 +251,7 @@
       }
     }
     
+    // 데이터가 들어오면 무조건 탭과 리스트를 그려줍니다!
     renderTabs();
     renderList();
   });
@@ -260,7 +260,7 @@
     set(ROOT, JSON.parse(JSON.stringify(appData)));
   }
 
-  // ── 비 올 때만 확률을 보여주는 똑똑한 날씨 함수 ──
+  // ── 비 올 때만 확률을 보여주는 날씨 함수 ──
   async function fetchWeatherByCoords(lat, lon) {
     try {
       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=precipitation_probability_max,weathercode&timezone=Asia%2FSeoul`);
@@ -277,7 +277,6 @@
 
       document.getElementById('wIcon').textContent = icon;
       
-      // 비가 오거나 비 확률이 높을 때만 괄호 안에 확률 표시
       if (isRain || rainProb >= 40) {
         document.getElementById('wTemp').textContent = `${temp}℃ (비 ${rainProb}%)`;
       } else {
@@ -402,7 +401,7 @@
 
   function closeCelebration() { document.getElementById('celebOverlay').classList.remove('show'); }
 
-  // 💡 외부(HTML)에서 함수를 호출할 수 있도록 window 객체에 완벽하게 등록 (오류 해결!)
+  // 💡 외부에서 접근 가능하도록 window 객체에 연결
   window.initWeather = initWeather;
   window.toggleItem = toggleItem;
   window.deleteItem = deleteItem;
@@ -410,7 +409,7 @@
   window.handleKeyPress = handleKeyPress;
   window.closeCelebration = closeCelebration;
 
-  // 앱 시작 시 날씨 연동
+  // 초기 날씨 세팅
   initWeather();
 
 </script>
