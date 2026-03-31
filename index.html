@@ -10,10 +10,11 @@
     --bg: #f5f7fa;
     --card: #ffffff;
     --text: #2d3436;
-    --text-muted: #b2bec3;
+    --text-muted: #a4b0be;
     --primary: #6c5ce7;
     --primary-light: #a29bfe;
     --success: #00b894;
+    --danger: #ff7675;
     --shadow: 0 8px 24px rgba(108, 92, 231, 0.08);
   }
 
@@ -54,6 +55,7 @@
     50% { transform: translateY(-6px); }
   }
 
+  /* 요일 탭 */
   .day-tabs {
     display: flex; justify-content: space-between;
     background: #f1f2f6; border-radius: 16px; padding: 6px; margin-bottom: 20px;
@@ -64,7 +66,8 @@
   }
   .day-tab.active { background: #fff; color: var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
 
-  .prep-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  /* 준비물 리스트 */
+  .prep-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
   .prep-item {
     display: flex; align-items: center; padding: 14px 16px;
     background: #fcfcfc; border: 2px solid #edf2f7; border-radius: 16px;
@@ -85,18 +88,33 @@
   .item-name { font-size: 16px; font-weight: 700; color: var(--text); transition: color 0.2s; word-break: keep-all; }
   .prep-item.checked .item-name { color: var(--success); text-decoration: line-through; opacity: 0.7; }
 
-  /* 💡 리스트 우측 끝에 들어갈 이모지 스타일 */
-  .item-match-emoji {
-    width: 32px; height: 32px;
-    font-size: 22px; display: flex; align-items: center; justify-content: center;
-    margin-left: 10px; flex-shrink: 0;
+  /* 💡 복구된 삭제(-) 버튼 */
+  .delete-btn {
+    width: 32px; height: 32px; border-radius: 8px; background: #ffeaa7; color: var(--danger);
+    border: none; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-left: 10px; flex-shrink: 0; transition: background 0.2s;
+  }
+  .delete-btn:hover { background: #fdcb6e; }
+
+  /* 💡 복구된 추가(+) 입력창 */
+  .add-container { display: flex; gap: 8px; margin-top: 10px; padding-top: 16px; border-top: 2px dashed #edf2f7; }
+  .add-input {
+    flex: 1; padding: 14px; border: 2px solid #edf2f7; border-radius: 14px;
+    font-size: 15px; font-family: inherit; font-weight: 600; outline: none; transition: border-color 0.2s;
+  }
+  .add-input:focus { border-color: var(--primary-light); }
+  .add-btn {
+    width: 50px; background: var(--primary); color: #fff; border: none; border-radius: 14px;
+    font-size: 24px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
 
+  /* 진행률 바 */
   .progress-container { margin-top: 20px; }
   .progress-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
   .progress-bar { width: 100%; height: 10px; background: #edf2f7; border-radius: 5px; overflow: hidden; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, #fdcb6e, #fd79a8); border-radius: 5px; width: 0%; transition: width 0.5s ease-out; }
 
+  /* 축하 팝업 */
   .celeb-overlay {
     position: fixed; inset: 0; background: rgba(255, 255, 255, 0.95); z-index: 1000;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -122,7 +140,7 @@
     <h1>지우의 등교 준비물</h1>
     <div class="weather-widget" id="weatherWidget" onclick="initWeather()" style="cursor:pointer;" title="위치 새로고침">
       <span id="wIcon">📍</span>
-      <span id="wTemp">위치 확인 중...</span>
+      <span id="wTemp">현재 위치 확인 중...</span>
     </div>
   </div>
 
@@ -134,6 +152,11 @@
   </div>
 
   <div class="prep-list" id="prepList"></div>
+
+  <div class="add-container">
+    <input type="text" id="newItemInput" class="add-input" placeholder="새로운 준비물 입력..." onkeypress="handleKeyPress(event)">
+    <button class="add-btn" onclick="addItem()">+</button>
+  </div>
 </div>
 
 <div class="celeb-overlay" id="celebOverlay">
@@ -143,7 +166,7 @@
 </div>
 
 <script>
-  // 지우의 준비물 리스트 설정
+  // 💡 초기 데이터 (요청하신 요일별 기본 준비물)
   const defaultData = {
     1: [ // 월
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
@@ -174,19 +197,21 @@
     { id: 1, name: '월' }, { id: 2, name: '화' }, { id: 3, name: '수' }, { id: 4, name: '목' }, { id: 5, name: '금' }
   ];
 
+  // 오늘 요일 구하기
   let currentDay = new Date().getDay();
   const actualToday = currentDay; 
-  if (currentDay === 0 || currentDay === 6) currentDay = 1; 
+  if (currentDay === 0 || currentDay === 6) currentDay = 1; // 주말이면 월요일로 세팅
 
   const todayStr = new Date().toLocaleDateString('ko-KR');
   let appData = JSON.parse(localStorage.getItem('jiwooPrepData'));
 
+  // 로컬 저장소 확인 및 날짜 초기화 로직
   if (!appData) {
     appData = { date: todayStr, days: defaultData };
     saveData();
   } else if (appData.date !== todayStr) {
     for (let day in appData.days) {
-      appData.days[day].forEach(item => item.checked = false);
+      appData.days[day].forEach(item => item.checked = false); // 체크만 해제, 목록은 유지
     }
     appData.date = todayStr;
     saveData();
@@ -196,56 +221,45 @@
     localStorage.setItem('jiwooPrepData', JSON.stringify(appData));
   }
 
-  // 💡 단어에 맞춰 이모지를 매칭해주는 마법 함수
-  function getAutoEmoji(text) {
-    if (text.includes('물통')) return '💧';
-    if (text.includes('태권') || text.includes('도복')) return '🥋';
-    if (text.includes('띠')) return '🎗️';
-    if (text.includes('줄넘기')) return '🏃';
-    if (text.includes('동시') || text.includes('공책') || text.includes('수첩')) return '📓';
-    if (text.includes('수학') || text.includes('구구단') || text.includes('문제집')) return '🔢';
-    if (text.includes('한우리') || text.includes('교재')) return '📖';
-    if (text.includes('읽을책') || text.includes('독서록') || text.includes('책')) return '📚';
-    if (text.includes('축구')) return '⚽';
-    if (text.includes('바이올린')) return '🎻';
-    if (text.includes('수영')) return '🏊';
-    if (text.includes('수경')) return '🥽';
-    if (text.includes('수건')) return '🧣';
-    if (text.includes('우산')) return '☂️';
-    if (text.includes('가방')) return '🎒';
-    return '✨'; // 기본 이모지
-  }
-
+  /* ── GPS + 실시간 날씨 연동 ── */
   async function fetchWeatherByCoords(lat, lon) {
     try {
       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=precipitation_probability_max,weathercode&timezone=Asia%2FSeoul`);
       const data = await res.json();
+      
       const weatherCode = data.current_weather.weathercode;
       const temp = Math.round(data.current_weather.temperature);
       const rainProb = data.daily.precipitation_probability_max[0];
+
       const isRain = (weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82) || weatherCode >= 95;
+      const isSnow = (weatherCode >= 71 && weatherCode <= 77) || weatherCode === 85 || weatherCode === 86;
       
       let icon = '☀️';
       if (weatherCode >= 1 && weatherCode <= 3) icon = '⛅';
+      if (weatherCode >= 45 && weatherCode <= 48) icon = '🌫️';
       if (isRain) icon = '🌧️';
+      if (isSnow) icon = '❄️';
 
       document.getElementById('wIcon').textContent = icon;
-      document.getElementById('wTemp').textContent = `${temp}℃ (비 ${rainProb}%)`;
+      document.getElementById('wTemp').textContent = `${temp}℃ (비 확률 ${rainProb}%)`;
 
       if ((isRain || rainProb >= 40) && actualToday >= 1 && actualToday <= 5) {
         addUmbrellaIfNeeded(actualToday);
       }
     } catch (e) {
-      document.getElementById('wIcon').textContent = '☀️';
-      document.getElementById('wTemp').textContent = '맑음';
+      document.getElementById('wIcon').textContent = '⚠️';
+      document.getElementById('wTemp').textContent = '날씨 정보 오류';
     }
   }
 
   function initWeather() {
+    document.getElementById('wIcon').textContent = '📍';
+    document.getElementById('wTemp').textContent = '위치 찾는 중...';
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude),
-        () => fetchWeatherByCoords(37.5665, 126.9780)
+        (position) => fetchWeatherByCoords(position.coords.latitude, position.coords.longitude),
+        (error) => fetchWeatherByCoords(37.5665, 126.9780)
       );
     } else {
       fetchWeatherByCoords(37.5665, 126.9780);
@@ -255,13 +269,15 @@
   function addUmbrellaIfNeeded(day) {
     const items = appData.days[day];
     const hasUmbrella = items.some(item => item.text.includes('우산'));
+    
     if (!hasUmbrella) {
-      items.unshift({ text: '우산 챙기기 (비 예보)', checked: false });
+      items.unshift({ text: '☂️ 우산 챙기기 (비 예보)', checked: false });
       saveData();
       if (currentDay === day) renderList(); 
     }
   }
 
+  /* ── 화면 렌더링 ── */
   function init() {
     renderTabs();
     renderList();
@@ -275,7 +291,11 @@
       const tab = document.createElement('div');
       tab.className = `day-tab ${day.id === currentDay ? 'active' : ''}`;
       tab.textContent = day.name;
-      tab.onclick = () => { currentDay = day.id; renderTabs(); renderList(); };
+      tab.onclick = () => {
+        currentDay = day.id;
+        renderTabs();
+        renderList();
+      };
       tabsContainer.appendChild(tab);
     });
   }
@@ -283,23 +303,34 @@
   function renderList() {
     const listContainer = document.getElementById('prepList');
     listContainer.innerHTML = '';
+    
     const items = appData.days[currentDay] || [];
+    
+    if (items.length === 0) {
+      listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#a4b0be; font-weight:700;">오늘은 챙길 준비물이 없어요! 🎉</div>';
+      updateProgress(0, 0);
+      return;
+    }
+
     let completedCount = 0;
 
     items.forEach((item, index) => {
       if (item.checked) completedCount++;
+
       const div = document.createElement('div');
       div.className = `prep-item ${item.checked ? 'checked' : ''}`;
       
+      // 💡 아이템 내용과 복구된 삭제(-) 버튼
       div.innerHTML = `
         <div class="item-content" onclick="toggleItem(${index})">
           <div class="checkbox"></div>
           <div class="item-name">${item.text}</div>
         </div>
-        <div class="item-match-emoji">${getAutoEmoji(item.text)}</div>
+        <button class="delete-btn" onclick="deleteItem(${index})">-</button>
       `;
       listContainer.appendChild(div);
     });
+
     updateProgress(completedCount, items.length);
   }
 
@@ -308,9 +339,41 @@
     items[index].checked = !items[index].checked;
     saveData();
     renderList();
+
     const completedCount = items.filter(item => item.checked).length;
+    // 아이템이 1개 이상이고 모두 체크되었을 때
     if (items.length > 0 && completedCount === items.length) {
-      setTimeout(() => { document.getElementById('celebOverlay').classList.add('show'); }, 300);
+      setTimeout(() => { showCelebration(); }, 300);
+    }
+  }
+
+  // 💡 복구된 삭제 기능
+  function deleteItem(index) {
+    if(confirm('이 준비물을 목록에서 삭제할까요?')) {
+      appData.days[currentDay].splice(index, 1);
+      saveData();
+      renderList();
+    }
+  }
+
+  // 💡 복구된 추가 기능
+  function addItem() {
+    const input = document.getElementById('newItemInput');
+    const text = input.value.trim();
+    if (text === '') return;
+
+    if (!appData.days[currentDay]) appData.days[currentDay] = [];
+    appData.days[currentDay].push({ text: text, checked: false });
+    saveData();
+    
+    input.value = ''; // 텍스트 지우기
+    renderList();
+  }
+
+  // 💡 엔터키로 추가하기
+  function handleKeyPress(e) {
+    if (e.key === 'Enter') {
+      addItem();
     }
   }
 
@@ -318,16 +381,30 @@
     const fill = document.getElementById('progressFill');
     const label = document.getElementById('progressLabel');
     const text = document.getElementById('progressText');
-    if (total === 0) { fill.style.width = '0%'; label.textContent = '0%'; return; }
+    
+    if (total === 0) {
+      fill.style.width = '0%'; label.textContent = '0%';
+      text.textContent = '완료율';
+      return;
+    }
+
     const percent = Math.round((done / total) * 100);
     fill.style.width = `${percent}%`;
     label.textContent = `${percent}%`;
     text.textContent = `${done} / ${total} 개 완료`;
   }
 
-  function closeCelebration() { document.getElementById('celebOverlay').classList.remove('show'); }
+  function showCelebration() {
+    document.getElementById('celebOverlay').classList.add('show');
+  }
 
+  function closeCelebration() {
+    document.getElementById('celebOverlay').classList.remove('show');
+  }
+
+  // 앱 시작
   init();
+
 </script>
 </body>
 </html>
