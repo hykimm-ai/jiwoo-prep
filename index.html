@@ -99,7 +99,7 @@
   .item-name { font-size: 16px; font-weight: 700; color: var(--text); transition: color 0.2s; word-break: keep-all; }
   .prep-item.checked .item-name { color: var(--success); text-decoration: line-through; opacity: 0.7; }
 
-  /* 삭제 기능은 유지하되 아이콘만 안보이게 처리 (부모님용 숨겨진 삭제) */
+  /* 삭제 기능은 유지하되 아이콘은 투명 처리 */
   .delete-hidden { width: 10px; height: 10px; border: none; background: transparent; cursor: pointer; }
 
   /* 진행률 바 */
@@ -174,7 +174,26 @@
   <p style="margin-top: 30px; font-size: 13px; color: var(--text-muted); opacity: 0.7;">(화면을 누르면 닫혀요)</p>
 </div>
 
-<script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // 루틴 앱에서 쓰시던 Firebase 설정 그대로 적용!
+  const firebaseConfig = {
+    apiKey: "AIzaSyBruq51Nw4KsgBRieONTSZQqY9jdwXXM9Y",
+    authDomain: "jiwoo-routine.firebaseapp.com",
+    projectId: "jiwoo-routine",
+    storageBucket: "jiwoo-routine.firebasestorage.app",
+    messagingSenderId: "298637888011",
+    appId: "1:298637888011:web:1af591089f65ea572f150e",
+    databaseURL: "https://jiwoo-routine-default-rtdb.firebaseio.com"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  // 'routineState'와 섞이지 않도록 'prepState'라는 새로운 서랍을 만듭니다.
+  const ROOT = ref(db, 'prepState');
+
   const defaultData = {
     1: [ // 월
       { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
@@ -201,26 +220,43 @@
     ]
   };
 
-  const daysInfo = [{ id: 1, name: '월' }, { id: 2, name: '화' }, { id: 3, name: '수' }, { id: 4, name: '목' }, { id: 5, name: '금' }];
+  const daysInfo = [
+    { id: 1, name: '월' }, { id: 2, name: '화' }, { id: 3, name: '수' }, { id: 4, name: '목' }, { id: 5, name: '금' }
+  ];
+
   let currentDay = new Date().getDay();
   const actualToday = currentDay; 
   if (currentDay === 0 || currentDay === 6) currentDay = 1; 
 
-  const todayStr = new Date().toLocaleDateString('ko-KR');
-  let appData = JSON.parse(localStorage.getItem('jiwooPrepData'));
+  let appData = null; // Firebase에서 데이터를 불러올 변수
 
-  if (!appData) {
-    appData = { date: todayStr, days: defaultData };
-    saveData();
-  } else if (appData.date !== todayStr) {
-    for (let day in appData.days) {
-      appData.days[day].forEach(item => item.checked = false); 
+  // 💡 Firebase 실시간 감지 (누군가 폰에서 추가/삭제/체크하면 즉시 화면에 반영)
+  onValue(ROOT, (snapshot) => {
+    const data = snapshot.val();
+    const todayStr = new Date().toLocaleDateString('ko-KR');
+
+    if (!data) {
+      // 데이터가 아예 없으면 (처음 실행) 초기값 저장
+      appData = { date: todayStr, days: defaultData };
+      saveData();
+    } else {
+      appData = data;
+      // 날짜가 바뀌었으면 체크박스 리셋
+      if (appData.date !== todayStr) {
+        for (let day in appData.days) {
+          appData.days[day].forEach(item => item.checked = false); 
+        }
+        appData.date = todayStr;
+        saveData();
+      } else {
+        renderList(); // 데이터가 변경되었으므로 화면 다시 그리기
+      }
     }
-    appData.date = todayStr;
-    saveData();
-  }
+  });
 
-  function saveData() { localStorage.setItem('jiwooPrepData', JSON.stringify(appData)); }
+  function saveData() {
+    set(ROOT, JSON.parse(JSON.stringify(appData))); // Firebase에 바로 저장
+  }
 
   async function fetchWeatherByCoords(lat, lon) {
     try {
@@ -230,12 +266,18 @@
       const temp = Math.round(data.current_weather.temperature);
       const rainProb = data.daily.precipitation_probability_max[0];
       const isRain = (weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82) || weatherCode >= 95;
+      
       let icon = '☀️';
       if (weatherCode >= 1 && weatherCode <= 3) icon = '⛅';
+      if (weatherCode >= 45 && weatherCode <= 48) icon = '🌫️';
       if (isRain) icon = '🌧️';
+
       document.getElementById('wIcon').textContent = icon;
       document.getElementById('wTemp').textContent = `${temp}℃ (비 ${rainProb}%)`;
-      if ((isRain || rainProb >= 40) && actualToday >= 1 && actualToday <= 5) addUmbrellaIfNeeded(actualToday);
+
+      if ((isRain || rainProb >= 40) && actualToday >= 1 && actualToday <= 5) {
+        addUmbrellaIfNeeded(actualToday);
+      }
     } catch (e) {
       document.getElementById('wIcon').textContent = '📍';
       document.getElementById('wTemp').textContent = '서울';
@@ -254,15 +296,18 @@
   }
 
   function addUmbrellaIfNeeded(day) {
+    if (!appData) return;
     const items = appData.days[day];
     if (!items.some(item => item.text.includes('우산'))) {
       items.unshift({ text: '☂️ 우산 챙기기 (비 예보)', checked: false });
       saveData();
-      if (currentDay === day) renderList(); 
     }
   }
 
-  function init() { renderTabs(); renderList(); initWeather(); }
+  function init() { 
+    renderTabs(); 
+    initWeather(); 
+  }
 
   function renderTabs() {
     const tabsContainer = document.getElementById('dayTabs');
@@ -277,20 +322,22 @@
   }
 
   function renderList() {
+    if (!appData) return;
     const listContainer = document.getElementById('prepList');
     listContainer.innerHTML = '';
     const items = appData.days[currentDay] || [];
+    
     if (items.length === 0) {
-      listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#a4b0be; font-weight:700;">챙길 준비물이 없어요! 🎉</div>';
+      listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#a4b0be; font-weight:700;">오늘은 챙길 준비물이 없어요! 🎉</div>';
       updateProgress(0, 0);
       return;
     }
+
     let completedCount = 0;
     items.forEach((item, index) => {
       if (item.checked) completedCount++;
       const div = document.createElement('div');
       div.className = `prep-item ${item.checked ? 'checked' : ''}`;
-      // 💡 ✕ 아이콘 코드를 아예 삭제하여 텍스트만 보이게 함
       div.innerHTML = `
         <div class="item-content" onclick="toggleItem(${index})">
           <div class="checkbox"></div>
@@ -304,11 +351,13 @@
   }
 
   function toggleItem(index) {
+    if (!appData) return;
     const items = appData.days[currentDay];
     items[index].checked = !items[index].checked;
-    saveData();
-    renderList();
-    if (items.length > 0 && items.every(item => item.checked)) {
+    saveData(); // Firebase에 반영
+    
+    const completedCount = items.filter(item => item.checked).length;
+    if (items.length > 0 && completedCount === items.length) {
       setTimeout(() => { document.getElementById('celebOverlay').classList.add('show'); }, 300);
     }
   }
@@ -317,19 +366,18 @@
     if(confirm('이 항목을 삭제할까요?')) {
       appData.days[currentDay].splice(index, 1);
       saveData();
-      renderList();
     }
   }
 
   function addItem() {
     const input = document.getElementById('newItemInput');
     const text = input.value.trim();
-    if (text === '') return;
+    if (text === '' || !appData) return;
+
     if (!appData.days[currentDay]) appData.days[currentDay] = [];
     appData.days[currentDay].push({ text: text, checked: false });
     saveData();
     input.value = '';
-    renderList();
   }
 
   function handleKeyPress(e) { if (e.key === 'Enter') addItem(); }
@@ -337,14 +385,23 @@
   function updateProgress(done, total) {
     const fill = document.getElementById('progressFill');
     const label = document.getElementById('progressLabel');
+    const text = document.getElementById('progressText');
     if (total === 0) { fill.style.width = '0%'; label.textContent = '0%'; return; }
     const percent = Math.round((done / total) * 100);
     fill.style.width = `${percent}%`;
     label.textContent = `${percent}%`;
-    document.getElementById('progressText').textContent = `${done} / ${total} 개 완료`;
+    text.textContent = `${done} / ${total} 개 완료`;
   }
 
   function closeCelebration() { document.getElementById('celebOverlay').classList.remove('show'); }
+
+  // 모듈 환경에서 html onClick 연결을 위해 window 객체에 할당
+  window.initWeather = initWeather;
+  window.toggleItem = toggleItem;
+  window.deleteItem = deleteItem;
+  window.addItem = addItem;
+  window.handleKeyPress = handleKeyPress;
+  window.closeCelebration = closeCelebration;
 
   init();
 </script>
