@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎒등교 준비물 체크리스트 </title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #2d3436;
+    --text-muted: #a4b0be;
+    --primary: #6c5ce7;
+    --primary-light: #a29bfe;
+    --success: #00b894;
+    --danger: #ff7675;
+    --shadow: 0 8px 24px rgba(108, 92, 231, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  
+  body {
+    font-family: 'Nunito', 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 480px;
+    background: var(--card);
+    border-radius: 28px;
+    padding: 30px 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .header { text-align: center; margin-bottom: 24px; position: relative; }
+  .header-emoji { font-size: 42px; margin-bottom: 8px; animation: bounce 2s infinite ease-in-out; }
+  .header h1 { font-size: 22px; font-weight: 900; color: var(--text); letter-spacing: -0.5px; margin-bottom: 12px; }
+  
+  /* 날씨 위젯 */
+  .weather-widget {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #f1f2f6; padding: 6px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: 800; color: var(--primary);
+  }
+  
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* 요일 탭 */
+  .day-tabs {
+    display: flex; justify-content: space-between;
+    background: #f1f2f6; border-radius: 16px; padding: 6px; margin-bottom: 20px;
+  }
+  .day-tab {
+    flex: 1; padding: 10px 0; text-align: center; font-size: 15px; font-weight: 800;
+    color: var(--text-muted); border-radius: 12px; cursor: pointer; transition: all 0.2s;
+  }
+  .day-tab.active { background: #fff; color: var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+  /* 준비물 리스트 */
+  .prep-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .prep-item {
+    display: flex; align-items: center; padding: 14px 16px;
+    background: #fcfcfc; border: 2px solid #edf2f7; border-radius: 16px;
+    transition: all 0.2s;
+  }
+  .prep-item.checked { background: #f0fdf4; border-color: var(--success); }
+  
+  .item-content { flex: 1; display: flex; align-items: center; cursor: pointer; }
+  .checkbox {
+    width: 26px; height: 26px; border-radius: 8px; border: 3px solid #dfe6e9;
+    margin-right: 12px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .prep-item.checked .checkbox { background: var(--success); border-color: var(--success); }
+  .checkbox::after { content: '✓'; color: #fff; font-size: 16px; font-weight: 900; opacity: 0; transform: scale(0.5); transition: all 0.2s; }
+  .prep-item.checked .checkbox::after { opacity: 1; transform: scale(1); }
+
+  .item-name { font-size: 16px; font-weight: 700; color: var(--text); transition: color 0.2s; word-break: keep-all; }
+  .prep-item.checked .item-name { color: var(--success); text-decoration: line-through; opacity: 0.7; }
+
+  /* 삭제 버튼 */
+  .delete-btn {
+    width: 32px; height: 32px; border-radius: 8px; background: #ffeaa7; color: var(--danger);
+    border: none; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-left: 10px; flex-shrink: 0;
+  }
+
+  /* 추가 입력창 */
+  .add-container { display: flex; gap: 8px; margin-top: 10px; padding-top: 20px; border-top: 2px dashed #edf2f7; }
+  .add-input {
+    flex: 1; padding: 14px; border: 2px solid #edf2f7; border-radius: 14px;
+    font-size: 15px; font-family: inherit; font-weight: 600; outline: none; transition: border-color 0.2s;
+  }
+  .add-input:focus { border-color: var(--primary-light); }
+  .add-btn {
+    width: 50px; background: var(--primary); color: #fff; border: none; border-radius: 14px;
+    font-size: 24px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* 진행률 바 */
+  .progress-container { margin-top: 20px; }
+  .progress-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+  .progress-bar { width: 100%; height: 10px; background: #edf2f7; border-radius: 5px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #fdcb6e, #fd79a8); border-radius: 5px; width: 0%; transition: width 0.5s ease-out; }
+
+  /* 축하 팝업 */
+  .celeb-overlay {
+    position: fixed; inset: 0; background: rgba(255, 255, 255, 0.95); z-index: 1000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s; padding: 20px; text-align: center;
+  }
+  .celeb-overlay.show { opacity: 1; pointer-events: auto; }
+  .celeb-heart { font-size: 100px; animation: heartBeat 1s infinite alternate; margin-bottom: 20px; }
+  .celeb-msg { font-size: 28px; font-weight: 900; line-height: 1.4; color: var(--text); }
+  .celeb-msg span { color: var(--primary); display: block; margin-top: 10px; font-size: 32px; }
+  .celeb-btn { margin-top: 40px; padding: 16px 40px; font-size: 18px; font-weight: 800; color: #fff; background: var(--primary); border: none; border-radius: 20px; cursor: pointer; box-shadow: var(--shadow); }
+
+  @keyframes heartBeat {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.15); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-emoji">🎒</div>
+    <h1>지우의 등교 준비물</h1>
+    <div class="weather-widget" id="weatherWidget" onclick="initWeather()" style="cursor:pointer;" title="위치 새로고침">
+      <span id="wIcon">📍</span>
+      <span id="wTemp">현재 위치 확인 중...</span>
+    </div>
+  </div>
+
+  <div class="day-tabs" id="dayTabs"></div>
+
+  <div class="progress-container" style="margin-bottom: 20px;">
+    <div class="progress-text"><span id="progressText">진행도</span><span id="progressLabel">0%</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <div class="prep-list" id="prepList"></div>
+
+  <div class="add-container">
+    <input type="text" id="newItemInput" class="add-input" placeholder="새로운 준비물 입력..." onkeypress="handleKeyPress(event)">
+    <button class="add-btn" onclick="addItem()">+</button>
+  </div>
+</div>
+
+<div class="celeb-overlay" id="celebOverlay">
+  <div class="celeb-heart">❤️</div>
+  <div class="celeb-msg">학교갈 준비 완료!<span>오늘도 화이팅<br>사랑해</span></div>
+  <button class="celeb-btn" onclick="closeCelebration()">다녀오겠습니다!</button>
+</div>
+
+<script>
+  // 초기 데이터 설정
+  const defaultData = {
+    1: [ // 월
+      { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
+      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을책', checked: false }, 
+      { text: '수학공부방 문제집', checked: false }, { text: '수학공부방 구구단 수첩', checked: false }
+    ],
+    2: [ // 화
+      { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, 
+      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을책', checked: false }, { text: '축구화', checked: false }
+    ],
+    3: [ // 수
+      { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, 
+      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을책', checked: false }, 
+      { text: '바이올린 스즈키책', checked: false }, { text: '바이올린 계이름책', checked: false }, { text: '바이올린', checked: false }
+    ],
+    4: [ // 목
+      { text: '물통', checked: false }, { text: '태권도복 & 띠', checked: false }, { text: '줄넘기', checked: false }, 
+      { text: '동시쓰기 책 & 공책', checked: false }, { text: '읽을책', checked: false }, { text: '독서록', checked: false }, 
+      { text: '한우리 교재 & 폴더', checked: false }, { text: '한우리책', checked: false }
+    ],
+    5: [ // 금
+      { text: '물통', checked: false }, { text: '읽을책', checked: false }, { text: '수영가방', checked: false }, 
+      { text: '수영복', checked: false }, { text: '수영모자', checked: false }, { text: '수경', checked: false }, { text: '수건', checked: false }
+    ]
+  };
+
+  const daysInfo = [
+    { id: 1, name: '월' }, { id: 2, name: '화' }, { id: 3, name: '수' }, { id: 4, name: '목' }, { id: 5, name: '금' }
+  ];
+
+  let currentDay = new Date().getDay();
+  const actualToday = currentDay; // 실제 오늘의 요일 저장용
+  if (currentDay === 0 || currentDay === 6) currentDay = 1; 
+
+  const todayStr = new Date().toLocaleDateString('ko-KR');
+  let appData = JSON.parse(localStorage.getItem('jiwooPrepData'));
+
+  if (!appData) {
+    appData = { date: todayStr, days: defaultData };
+    saveData();
+  } else if (appData.date !== todayStr) {
+    for (let day in appData.days) {
+      appData.days[day].forEach(item => item.checked = false);
+    }
+    appData.date = todayStr;
+    saveData();
+  }
+
+  function saveData() {
+    localStorage.setItem('jiwooPrepData', JSON.stringify(appData));
+  }
+
+  /* ── GPS + 실시간 날씨 연동 (Open-Meteo) ── */
+  async function fetchWeatherByCoords(lat, lon) {
+    try {
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=precipitation_probability_max,weathercode&timezone=Asia%2FSeoul`);
+      const data = await res.json();
+      
+      const weatherCode = data.current_weather.weathercode;
+      const temp = Math.round(data.current_weather.temperature);
+      const rainProb = data.daily.precipitation_probability_max[0]; // 오늘 최고 강수 확률
+
+      // 비/눈 판단 (WMO 날씨 코드 기준)
+      const isRain = (weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82) || weatherCode >= 95;
+      const isSnow = (weatherCode >= 71 && weatherCode <= 77) || weatherCode === 85 || weatherCode === 86;
+      
+      let icon = '☀️';
+      if (weatherCode === 1 || weatherCode === 2 || weatherCode === 3) icon = '⛅';
+      if (weatherCode >= 45 && weatherCode <= 48) icon = '🌫️';
+      if (isRain) icon = '🌧️';
+      if (isSnow) icon = '❄️';
+
+      document.getElementById('wIcon').textContent = icon;
+      document.getElementById('wTemp').textContent = `${temp}℃ (비 확률 ${rainProb}%)`;
+
+      // 당일 비 예보가 40% 이상이거나 현재 비가 오고 있다면 우산 추가
+      if ((isRain || rainProb >= 40) && actualToday >= 1 && actualToday <= 5) {
+        addUmbrellaIfNeeded(actualToday);
+      }
+    } catch (e) {
+      console.error('날씨 정보를 가져오지 못했습니다.', e);
+      document.getElementById('wIcon').textContent = '⚠️';
+      document.getElementById('wTemp').textContent = '날씨 정보 오류';
+    }
+  }
+
+  // GPS 위치 정보 요청 함수
+  function initWeather() {
+    document.getElementById('wIcon').textContent = '📍';
+    document.getElementById('wTemp').textContent = '위치 찾는 중...';
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // 사용자가 위치 허용 시: 현재 기기 좌표 사용
+          fetchWeatherByCoords(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          // 사용자가 차단하거나 오류 시: 기본값(서울) 사용
+          console.log('위치 정보 접근 거부됨. 기본값(서울) 날씨를 표시합니다.');
+          fetchWeatherByCoords(37.5665, 126.9780);
+        }
+      );
+    } else {
+      // GPS를 지원하지 않는 브라우저인 경우: 기본값(서울) 사용
+      fetchWeatherByCoords(37.5665, 126.9780);
+    }
+  }
+
+  function addUmbrellaIfNeeded(day) {
+    const items = appData.days[day];
+    // 이미 우산이 있는지 텍스트 검사
+    const hasUmbrella = items.some(item => item.text.includes('우산'));
+    
+    if (!hasUmbrella) {
+      // 목록 맨 위에 우산 항목 추가
+      items.unshift({ text: '☂️ 우산 챙기기 (비 예보)', checked: false });
+      saveData();
+      if (currentDay === day) renderList(); // 현재 보고 있는 화면 업데이트
+    }
+  }
+
+  function init() {
+    renderTabs();
+    renderList();
+    initWeather(); // 앱 시작 시 GPS 권한 요청 및 날씨 불러오기
+  }
+
+  function renderTabs() {
+    const tabsContainer = document.getElementById('dayTabs');
+    tabsContainer.innerHTML = '';
+    daysInfo.forEach(day => {
+      const tab = document.createElement('div');
+      tab.className = `day-tab ${day.id === currentDay ? 'active' : ''}`;
+      tab.textContent = day.name;
+      tab.onclick = () => {
+        currentDay = day.id;
+        renderTabs();
+        renderList();
+      };
+      tabsContainer.appendChild(tab);
+    });
+  }
+
+  function renderList() {
+    const listContainer = document.getElementById('prepList');
+    listContainer.innerHTML = '';
+    
+    const items = appData.days[currentDay] || [];
+    
+    if (items.length === 0) {
+      listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#a4b0be; font-weight:700;">이 날은 챙길 준비물이 없어요! 🎉<br>아래에서 추가해주세요.</div>';
+      updateProgress(0, 0);
+      return;
+    }
+
+    let completedCount = 0;
+
+    items.forEach((item, index) => {
+      if (item.checked) completedCount++;
+
+      const div = document.createElement('div');
+      div.className = `prep-item ${item.checked ? 'checked' : ''}`;
+      
+      div.innerHTML = `
+        <div class="item-content" onclick="toggleItem(${index})">
+          <div class="checkbox"></div>
+          <div class="item-name">${item.text}</div>
+        </div>
+        <button class="delete-btn" onclick="deleteItem(${index})">-</button>
+      `;
+      listContainer.appendChild(div);
+    });
+
+    updateProgress(completedCount, items.length);
+  }
+
+  function toggleItem(index) {
+    const items = appData.days[currentDay];
+    items[index].checked = !items[index].checked;
+    saveData();
+    renderList();
+
+    const completedCount = items.filter(item => item.checked).length;
+    if (items.length > 0 && completedCount === items.length) {
+      setTimeout(() => { showCelebration(); }, 300);
+    }
+  }
+
+  function deleteItem(index) {
+    if(confirm('이 준비물을 삭제할까요?')) {
+      appData.days[currentDay].splice(index, 1);
+      saveData();
+      renderList();
+    }
+  }
+
+  function addItem() {
+    const input = document.getElementById('newItemInput');
+    const text = input.value.trim();
+    if (text === '') return;
+
+    if (!appData.days[currentDay]) appData.days[currentDay] = [];
+    appData.days[currentDay].push({ text: text, checked: false });
+    saveData();
+    
+    input.value = '';
+    renderList();
+  }
+
+  function handleKeyPress(e) {
+    if (e.key === 'Enter') addItem();
+  }
+
+  function updateProgress(done, total) {
+    const fill = document.getElementById('progressFill');
+    const label = document.getElementById('progressLabel');
+    const text = document.getElementById('progressText');
+    
+    if (total === 0) {
+      fill.style.width = '0%'; label.textContent = '0%';
+      text.textContent = '완료율';
+      return;
+    }
+
+    const percent = Math.round((done / total) * 100);
+    fill.style.width = `${percent}%`;
+    label.textContent = `${percent}%`;
+    text.textContent = `${done} / ${total} 개 완료`;
+  }
+
+  function showCelebration() { document.getElementById('celebOverlay').classList.add('show'); }
+  function closeCelebration() { document.getElementById('celebOverlay').classList.remove('show'); }
+
+  init();
+</script>
+</body>
+</html>
