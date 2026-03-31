@@ -263,4 +263,155 @@
     }
   }
 
-  function
+  function initWeather() {
+    document.getElementById('wIcon').textContent = '📍';
+    document.getElementById('wTemp').textContent = '위치 찾는 중...';
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => fetchWeatherByCoords(position.coords.latitude, position.coords.longitude),
+        (error) => fetchWeatherByCoords(37.5665, 126.9780)
+      );
+    } else {
+      fetchWeatherByCoords(37.5665, 126.9780);
+    }
+  }
+
+  function addUmbrellaIfNeeded(day) {
+    const items = appData.days[day];
+    const hasUmbrella = items.some(item => item.text.includes('우산'));
+    
+    if (!hasUmbrella) {
+      items.unshift({ text: '☂️ 우산 챙기기 (비 예보)', checked: false });
+      saveData();
+      if (currentDay === day) renderList(); 
+    }
+  }
+
+  /* ── 화면 렌더링 ── */
+  function init() {
+    renderTabs();
+    renderList();
+    initWeather(); 
+  }
+
+  function renderTabs() {
+    const tabsContainer = document.getElementById('dayTabs');
+    tabsContainer.innerHTML = '';
+    daysInfo.forEach(day => {
+      const tab = document.createElement('div');
+      tab.className = `day-tab ${day.id === currentDay ? 'active' : ''}`;
+      tab.textContent = day.name;
+      tab.onclick = () => {
+        currentDay = day.id;
+        renderTabs();
+        renderList();
+      };
+      tabsContainer.appendChild(tab);
+    });
+  }
+
+  function renderList() {
+    const listContainer = document.getElementById('prepList');
+    listContainer.innerHTML = '';
+    
+    const items = appData.days[currentDay] || [];
+    
+    if (items.length === 0) {
+      listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#a4b0be; font-weight:700;">오늘은 챙길 준비물이 없어요! 🎉</div>';
+      updateProgress(0, 0);
+      return;
+    }
+
+    let completedCount = 0;
+
+    items.forEach((item, index) => {
+      if (item.checked) completedCount++;
+
+      const div = document.createElement('div');
+      div.className = `prep-item ${item.checked ? 'checked' : ''}`;
+      
+      div.innerHTML = `
+        <div class="item-content" onclick="toggleItem(${index})">
+          <div class="checkbox"></div>
+          <div class="item-name">${item.text}</div>
+        </div>
+        <button class="delete-btn" onclick="deleteItem(${index})">-</button>
+      `;
+      listContainer.appendChild(div);
+    });
+
+    updateProgress(completedCount, items.length);
+  }
+
+  function toggleItem(index) {
+    const items = appData.days[currentDay];
+    items[index].checked = !items[index].checked;
+    saveData();
+    renderList();
+
+    const completedCount = items.filter(item => item.checked).length;
+    // 아이템이 1개 이상이고 모두 체크되었을 때 축하 팝업 띄우기
+    if (items.length > 0 && completedCount === items.length) {
+      setTimeout(() => { showCelebration(); }, 300);
+    }
+  }
+
+  function deleteItem(index) {
+    if(confirm('이 준비물을 목록에서 삭제할까요?')) {
+      appData.days[currentDay].splice(index, 1);
+      saveData();
+      renderList();
+    }
+  }
+
+  function addItem() {
+    const input = document.getElementById('newItemInput');
+    const text = input.value.trim();
+    if (text === '') return;
+
+    if (!appData.days[currentDay]) appData.days[currentDay] = [];
+    appData.days[currentDay].push({ text: text, checked: false });
+    saveData();
+    
+    input.value = ''; // 텍스트 지우기
+    renderList();
+  }
+
+  function handleKeyPress(e) {
+    if (e.key === 'Enter') {
+      addItem();
+    }
+  }
+
+  function updateProgress(done, total) {
+    const fill = document.getElementById('progressFill');
+    const label = document.getElementById('progressLabel');
+    const text = document.getElementById('progressText');
+    
+    if (total === 0) {
+      fill.style.width = '0%'; label.textContent = '0%';
+      text.textContent = '완료율';
+      return;
+    }
+
+    const percent = Math.round((done / total) * 100);
+    fill.style.width = `${percent}%`;
+    label.textContent = `${percent}%`;
+    text.textContent = `${done} / ${total} 개 완료`;
+  }
+
+  function showCelebration() {
+    document.getElementById('celebOverlay').classList.add('show');
+  }
+
+  function closeCelebration() {
+    document.getElementById('celebOverlay').classList.remove('show');
+  }
+
+  // 앱 시작
+  init();
+
+</script>
+</body>
+</html>
